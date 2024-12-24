@@ -1,91 +1,86 @@
-import pandas as pd
-from itertools import combinations
+import csv
+from collections import defaultdict
 
-def load_schedule(file_path):
-    """
-    Load the schedule from a CSV or Excel file.
-    The schedule should have columns: 'Team', 'R1', 'R2', ..., 'R31'.
-    """
-    return pd.read_csv(file_path)  # Use pd.read_excel(file_path) for Excel files.
+def read_csv(file_path):
+    matches_played = defaultdict(set)
+    teams = set()
 
-def get_played_matches(schedule, previous_rounds):
-    """
-    Retrieve all matches already played in the previous rounds (R1-R26).
-    """
-    played_matches = set()
-    for round_col in previous_rounds:
-        round_data = schedule[round_col]
-        for match in round_data.dropna():  # Ignore NaN (empty) cells.
-            played_matches.add(tuple(sorted(match.split('-'))))  # Sort to avoid duplicates.
-    return played_matches
-
-def find_missing_matches(schedule, rounds_to_fix):
-    """
-    Identify teams missing matches in specific rounds (e.g., R27-R31).
-    """
-    missing_matches = {}
-    for round_col in rounds_to_fix:
-        round_data = schedule[round_col]
-        missing_teams = schedule['Team'][round_data.isna()].tolist()
-        missing_matches[round_col] = missing_teams
-    return missing_matches
-
-def generate_new_matches(schedule, missing_matches, played_matches, rounds_to_fix):
-    """
-    Generate new match suggestions for the missing rounds while avoiding overlapping matches.
-    """
-    teams = schedule['Team'].tolist()
-    suggestions = {}  # Store suggested matches for each round.
-
-    for round_col in rounds_to_fix:
-        suggestions[round_col] = []
-        missing_teams = missing_matches[round_col]
-
-        # Ensure all teams play once in the current round.
-        used_teams = set()
-        while len(missing_teams) > 1:
-            team1 = missing_teams.pop(0)
-            for team2 in missing_teams:
-                match = tuple(sorted((team1, team2)))
-                if match not in played_matches and team1 not in used_teams and team2 not in used_teams:
-                    suggestions[round_col].append(f"{team1}-{team2}")
-                    played_matches.add(match)
-                    used_teams.add(team1)
-                    used_teams.add(team2)
-                    missing_teams.remove(team2)
-                    break
-
-        # Handle any remaining teams (if odd number, one team won't play).
-        if missing_teams:
-            print(f"Warning: Team(s) {missing_teams} could not be scheduled in {round_col} due to an odd number of teams.")
+    with open(file_path, mode='r') as file:
+        reader = csv.DictReader(file)
+        for row in reader:
+            team = row['Team']
+            teams.add(team)
+            for round_num, opponent in row.items():
+                if round_num != 'Team' and opponent:
+                    matches_played[team].add(opponent)
+                    matches_played[opponent].add(team)
     
-    return suggestions
+    return matches_played, list(teams)
 
-def main():
-    # Path to your schedule file.
-    file_path = "schedule.csv"
+def can_play_match(home, away, matches_played, used_teams):
+    return away not in used_teams and home != away and away not in matches_played[home]
 
-    # Load the schedule.
-    schedule = load_schedule(file_path)
+def backtrack(round_matches, teams, matches_played, used_teams, index):
+    if len(round_matches) == len(teams) // 2:
+        return True
 
-    # Define the columns for previous rounds (R1-R26) and rounds to fix (R27-R31).
-    previous_rounds = [f"R{i}" for i in range(1, 27)]
-    rounds_to_fix = [f"R{i}" for i in range(27, 32)]
+    if index >= len(teams):
+        return False
 
-    # Retrieve all matches already played in previous rounds.
-    played_matches = get_played_matches(schedule, previous_rounds)
+    home = teams[index]
+    if home in used_teams:
+        return backtrack(round_matches, teams, matches_played, used_teams, index + 1)
 
-    # Find missing matches in rounds R27-R31.
-    missing_matches = find_missing_matches(schedule, rounds_to_fix)
+    for away in teams:
+        if can_play_match(home, away, matches_played, used_teams):
+            round_matches.append((home, away))
+            matches_played[home].add(away)
+            matches_played[away].add(home)
+            used_teams.add(home)
+            used_teams.add(away)
+            
+            if backtrack(round_matches, teams, matches_played, used_teams, index + 1):
+                return True
+            
+            # Backtrack
+            round_matches.pop()
+            matches_played[home].remove(away)
+            matches_played[away].remove(home)
+            used_teams.remove(home)
+            used_teams.remove(away)
 
-    # Generate new match suggestions for missing rounds while avoiding overlap.
-    suggestions = generate_new_matches(schedule, missing_matches, played_matches, rounds_to_fix)
+    return False
 
-    # Output the suggestions.
-    for round_col, matches in suggestions.items():
-        print(f"Match suggestions for {round_col}:")
+def generate_remaining_schedule(teams, matches_played):
+    n = len(teams)
+    rounds = []
+
+    for round_num in range(n - 1, n - 1 + 5):
+        round_matches = []
+        used_teams = set()
+
+        if not backtrack(round_matches, teams, matches_played, used_teams, 0):
+            raise ValueError("Cannot generate a full round without overlaps.")
+        
+        rounds.append(round_matches)
+
+    return rounds
+
+def print_schedule(schedule, start_round=27):
+    for round_num, matches in enumerate(schedule, start_round):
+        print(f"Round {round_num}:")
         for match in matches:
-            print(f"  {match}")
+            print(f"{match[0]} vs {match[1]}")
+        print()
 
-if __name__ == "__main__":
-    main()
+# Example usage
+file_path = 'schedule.csv'
+
+# Read teams and their already played opponents from CSV file
+matches_played, teams = read_csv(file_path)
+
+# Generate the remaining schedule
+remaining_schedule = generate_remaining_schedule(teams, matches_played)
+
+# Print the remaining schedule
+print_schedule(remaining_schedule)
