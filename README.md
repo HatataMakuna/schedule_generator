@@ -17,8 +17,8 @@ This repository contains a script to generate a round-robin schedule for teams. 
 
 1. Clone the repository:
     ```sh
-    git clone https://github.com/yourusername/round-robin-schedule-generator.git
-    cd round-robin-schedule-generator
+    git clone https://github.com/HatataMakuna/schedule_generator.git
+    cd schedule_generator
     ```
 
 2. Prepare your `schedule.csv` file in the following format:
@@ -45,7 +45,7 @@ This repository contains a script to generate a round-robin schedule for teams. 
 
 4. Run the script:
     ```sh
-    python generate_schedule.py
+    python generate.py
     ```
 
 5. The script will output the generated schedule.
