@@ -1,3 +1,8 @@
+# TODO: Add a new UI:
+#       * allowing the user to adjust settings
+#       * allow the user to convert xlsx to csv before generating
+#       * display the results (can export to PDF?)
+
 import csv
 from collections import defaultdict
 
