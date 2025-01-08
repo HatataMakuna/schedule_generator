@@ -4,6 +4,7 @@
 #       * display the results (can export to PDF?)
 
 import csv
+import random
 from collections import defaultdict
 
 def read_csv(file_path):
@@ -39,7 +40,11 @@ def backtrack(round_matches, teams, matches_played, used_teams, index, match_typ
     if home in used_teams:
         return backtrack(round_matches, teams, matches_played, used_teams, index + 1, match_type)
 
-    for away in teams:
+    # Shuffle the list of teams to randomize the order of potential opponents
+    potential_opponents = list(teams)
+    random.shuffle(potential_opponents)
+
+    for away in potential_opponents:
         if can_play_match(home, away, matches_played, used_teams, match_type):
             round_matches.append((home, away))
             if match_type == 'once':
@@ -75,7 +80,7 @@ def backtrack(round_matches, teams, matches_played, used_teams, index, match_typ
 
     return False
 
-def generate_remaining_schedule(teams, matches_played, num_rounds, match_type):
+def generate_schedule(teams, matches_played, num_rounds, match_type):
     rounds = []
 
     for _ in range(num_rounds):
@@ -84,6 +89,8 @@ def generate_remaining_schedule(teams, matches_played, num_rounds, match_type):
         if not backtrack(round_matches, teams, matches_played, used_teams, 0, match_type):
             raise ValueError("Cannot generate a full round without overlaps.")
         
+        # Randomize the order of matches in the round
+        random.shuffle(round_matches)
         rounds.append(round_matches)
 
     return rounds
@@ -102,14 +109,14 @@ file_path = 'schedule.csv'
 matches_played, teams = read_csv(file_path)
 
 # Define number of rounds to generate and starting round number
-num_rounds_to_generate = 31
-starting_round_number = 1
+num_rounds_to_generate = 30
+starting_round_number = 2
 
 # Choose match type
-match_type = 'twice' # Set to 'once' or 'twice'
+match_type = 'once' # Set to 'once' or 'twice'
 
 # Generate the remaining schedule
-remaining_schedule = generate_remaining_schedule(teams, matches_played, num_rounds_to_generate, match_type)
+remaining_schedule = generate_schedule(teams, matches_played, num_rounds_to_generate, match_type)
 
 # Print the remaining schedule
 print_schedule(remaining_schedule, starting_round_number)
