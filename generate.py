@@ -11,13 +11,18 @@ def read_csv(file_path):
     matches_played = defaultdict(lambda: {'home': set(), 'away': set()})
     teams = set()
 
-    with open(file_path, mode='r') as file:
+    with open(file_path, mode='r', newline='', encoding='utf-8-sig') as file:
         reader = csv.DictReader(file)
+        fieldnames = [name.strip() for name in reader.fieldnames]  # Strip spaces
+        if 'Team' not in fieldnames:
+            raise KeyError("The CSV file must contain a 'Team' column.")
+
         for row in reader:
-            team = row['Team']
+            team = row['Team'].strip()  # Ensure no leading/trailing spaces
             teams.add(team)
             for round_num, opponent in row.items():
-                if round_num != 'Team' and opponent:
+                if round_num != 'Team' and opponent and opponent.strip().upper() != 'NaN':  # Ignore NaNs
+                    opponent = opponent.strip()  # Ensure no extra spaces
                     matches_played[team]['home'].add(opponent)
                     matches_played[opponent]['away'].add(team)
     
@@ -109,8 +114,8 @@ file_path = 'schedule.csv'
 matches_played, teams = read_csv(file_path)
 
 # Define number of rounds to generate and starting round number
-num_rounds_to_generate = 30
-starting_round_number = 2
+num_rounds_to_generate = 31
+starting_round_number = 1
 
 # Choose match type
 match_type = 'once' # Set to 'once' or 'twice'
