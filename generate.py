@@ -85,6 +85,17 @@ def backtrack(round_matches, teams, matches_played, used_teams, index, match_typ
 
     return False
 
+def suggest_match_switches(teams, matches_played, used_teams):
+    suggestions = []
+    available_teams = set(teams) - used_teams
+
+    for team in used_teams:
+        for opponent in available_teams:
+            if can_play_match(team, opponent, matches_played, used_teams, match_type="once"):
+                suggestions.append(f"Try switching {team} with {opponent}.")
+    
+    return suggestions if suggestions else ["No immediate match switches found. Try adjusting the team list."]
+
 def generate_schedule(teams, matches_played, num_rounds, match_type):
     rounds = []
 
@@ -92,9 +103,13 @@ def generate_schedule(teams, matches_played, num_rounds, match_type):
         round_matches = []
         used_teams = set()
         if not backtrack(round_matches, teams, matches_played, used_teams, 0, match_type):
-            raise ValueError("Cannot generate a full round without overlaps.")
+            print("Error: Cannot generate a full round without overlaps.")
+            suggestions = suggest_match_switches(teams, matches_played, used_teams)
+            print("Possible fixes:")
+            for suggestion in suggestions:
+                print(suggestion)
+            return []  # Return empty list to indicate failure
         
-        # Randomize the order of matches in the round
         random.shuffle(round_matches)
         rounds.append(round_matches)
 
@@ -107,15 +122,29 @@ def print_schedule(schedule, start_round=1):
             print(f"{match[0]} vs {match[1]}")
         print()
 
-# Example usage
+def save_schedule(schedule, file_name="output.txt", start_round=1):
+    with open(file_name, "w", encoding="utf-8") as file:
+        for round_num, matches in enumerate(schedule, start_round):
+            round_header = f"Round {round_num}:\n"
+            print(round_header, end="")  # Print to console
+            file.write(round_header)  # Write to file
+
+            for match in matches:
+                match_str = f"{match[0]} vs {match[1]}\n"
+                print(match_str, end="")  # Print to console
+                file.write(match_str)  # Write to file
+
+            print()  # Print empty line in console
+            file.write("\n")  # Add empty line in file
+
 file_path = 'schedule.csv'
 
 # Read teams and their already played opponents from CSV file
 matches_played, teams = read_csv(file_path)
 
 # Define number of rounds to generate and starting round number
-num_rounds_to_generate = 31
-starting_round_number = 1
+num_rounds_to_generate = 33
+starting_round_number = 3
 
 # Choose match type
 match_type = 'once' # Set to 'once' or 'twice'
@@ -124,4 +153,10 @@ match_type = 'once' # Set to 'once' or 'twice'
 remaining_schedule = generate_schedule(teams, matches_played, num_rounds_to_generate, match_type)
 
 # Print the remaining schedule
-print_schedule(remaining_schedule, starting_round_number)
+# print_schedule(remaining_schedule, starting_round_number)
+
+# Save the generated schedule
+save_schedule(remaining_schedule, "output.txt", starting_round_number)
+
+# Notify user
+print("Schedule generated! Check your output.txt file.")
